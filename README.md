@@ -38,16 +38,19 @@ The AI Course Ranking Application is designed to facilitate the discovery and ev
 ## Installation
 
 1. Clone the repository:
-''' git clone https://github.com/your-username/ai-course-ranking.git
+'''python 
+git clone https://github.com/your-username/ai-course-ranking.git
 '''
 2. Install dependencies:
-'''cd ai-course-ranking
+'''python
+cd ai-course-ranking
 npm install
 '''
 3. Set up environment variables:
 - Create a `.env` file and add necessary configurations.
 4. Run the application:
-'''npm start '''
+'''python
+npm start '''
 
 ## Usage
 
