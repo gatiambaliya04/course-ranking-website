@@ -1,43 +1,20 @@
 import express from 'express';
 import passport from 'passport';
-import session from 'express-session';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
+
 dotenv.config();
 const router = express.Router();
 
-const google_client_id = process.env.GOOGLE_CLIENT_ID
-const google_client_secret = process.env.GOOGLE_CLIENT_SECRET
+const google_client_id = process.env.GOOGLE_CLIENT_ID;
+const google_client_secret = process.env.GOOGLE_CLIENT_SECRET;
+const jwt_secret = process.env.JWT_SECRET;
 
-// Configure session management
-router.use(session({ secret: 'secret', resave: false, saveUninitialized: true }));
+// Initialize passport
 router.use(passport.initialize());
-router.use(passport.session());
-
-// Serialize user into the session
-passport.serializeUser((user, done) => {
-    done(null, user.user_id);
-});
-
-// Deserialize user from the session
-passport.deserializeUser(async (id, done) => {
-    try {
-        const [rows] = await pool.query(`
-            SELECT * 
-            FROM users 
-            WHERE user_id = ?`, 
-        [id]);
-        if (rows.length === 0) {
-            return done(null, false);
-        }
-        done(null, rows[0]);
-    } catch (err) {
-        done(err, null);
-    }
-});
 
 // Configure Google OAuth strategy
 passport.use(new GoogleStrategy({
@@ -52,6 +29,7 @@ async (accessToken, refreshToken, profile, done) => {
             FROM users 
             WHERE google_id = ?`, 
         [profile.id]);
+
         let user;
         if (rows.length > 0) {
             user = rows[0];
@@ -79,7 +57,6 @@ async (accessToken, refreshToken, profile, done) => {
         }
 
         // Create JWT
-        const jwt_secret = process.env.JWT_SECRET;
         const token = jwt.sign({ userId: user.user_id }, jwt_secret, { expiresIn: '1d' });
         const tokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
@@ -108,10 +85,11 @@ router.get('/auth/google',
 
 // Google OAuth callback route
 router.get('/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: '/' }),
+    passport.authenticate('google', { session: false, failureRedirect: '/' }),
     (req, res) => {
-        // Send the token in the response body
-        res.status(200).json({ token: req.user.token });
+        const token = req.user.token;
+        res.cookie('token', token, { httpOnly: true, secure: true }); // Adjust secure to false if not using HTTPS
+        res.status(200).json({ message: 'Login successful'});
     }
 );
 

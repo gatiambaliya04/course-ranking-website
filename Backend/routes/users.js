@@ -3,10 +3,13 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db.js';
-import dotenv from 'dotenv'
+import cookieParser from 'cookie-parser';
+import dotenv from 'dotenv';
+
 dotenv.config();
 const router = express.Router();
 
+router.use(cookieParser());
 const jwt_secret = process.env.JWT_SECRET;
 
 router.post("/login",async (req,res)=>{
@@ -34,7 +37,8 @@ router.post("/login",async (req,res)=>{
             WHERE user_id=?`,
         [tokenExpiresAt,new Date(),user.user_id]);
 
-        res.status(200).json({message: 'Loggedin successfully',token});
+        res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'strict' });
+        res.status(200).json({ message: 'Logged in successfully' });
     } catch (err) {
         console.log(err)
         res.status(500).json({ error: 'Internal server error' });
@@ -81,7 +85,8 @@ router.post("/signup",async (req,res)=>{
         ]); 
         
         console.log(`User registered with UUID: ${user_id}`);
-        res.status(200).json({message: 'Registered successfully',token});
+        res.cookie('token', token, { httpOnly: true, secure: true, sameSite: 'strict' });
+        res.status(200).json({ message: 'Registered successfully' });
     } catch (err) {
         console.log(err)
         res.status(500).json({ error: 'Internal server error' });
@@ -89,9 +94,8 @@ router.post("/signup",async (req,res)=>{
 })
 
 function authenticateToken(req,res,next){
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (token == null) return res.status(401).json({message: 'Authorisation Failed : Auth token not provided'}); // Unauthorized
+    const token = req.cookies.token;
+    if (!token) return res.status(401).json({message: 'Authorisation Failed : Auth token not provided'}); // Unauthorized
 
     jwt.verify(token, jwt_secret, async (err, decoded) => {
         if (err){ 

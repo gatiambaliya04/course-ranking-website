@@ -6,8 +6,7 @@ const router = express.Router();
 const jwt_secret = process.env.JWT_SECRET;
 
 function authenticateToken(req,res,next){
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = req.cookies.token;
     //major change made here.->func different from authenticateToken from users.js
     if (token == null){
         req.user = null;
